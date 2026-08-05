@@ -1,0 +1,1480 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rarity Dice</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1017;
+      --panel: #171c25;
+      --panel-2: #202734;
+      --line: rgba(255, 255, 255, 0.13);
+      --text: #f6f7fb;
+      --muted: #aab1c1;
+      --accent: #3ce2b6;
+      --danger: #ff4d6d;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(60, 226, 182, 0.16), transparent 28rem),
+        radial-gradient(circle at 85% 18%, rgba(255, 194, 87, 0.12), transparent 24rem),
+        linear-gradient(135deg, #0d1017 0%, #141821 58%, #0b0d12 100%);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1320px, calc(100vw - 32px));
+      min-height: 100vh;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 20px;
+      align-items: stretch;
+      padding: 24px 0;
+    }
+
+    .stage {
+      min-height: calc(100vh - 48px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(23, 28, 37, 0.84);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.3vw, 2.15rem);
+      letter-spacing: 0;
+    }
+
+    .stats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .stat {
+      min-width: 86px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 1.02rem;
+    }
+
+    .roll-zone {
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding: 30px 20px;
+      overflow: hidden;
+    }
+
+    .roll-zone::before {
+      content: "";
+      position: absolute;
+      width: min(58vw, 560px);
+      aspect-ratio: 1;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+      background:
+        conic-gradient(from 120deg, rgba(255, 255, 255, 0.02), rgba(60, 226, 182, 0.14), rgba(255, 92, 138, 0.1), rgba(255, 255, 255, 0.02)),
+        radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 62%);
+      filter: blur(0.2px);
+      animation: orbit 14s linear infinite;
+    }
+
+    @keyframes orbit {
+      to { transform: rotate(360deg); }
+    }
+
+    .result {
+      position: relative;
+      z-index: 1;
+      width: min(560px, 100%);
+      display: grid;
+      place-items: center;
+      gap: 18px;
+      text-align: center;
+    }
+
+    .dice-wrap {
+      perspective: 900px;
+      width: min(44vw, 196px);
+      min-width: 138px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    .dice {
+      width: 100%;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 22%;
+      border: 2px solid rgba(255, 255, 255, 0.34);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.24), rgba(255,255,255,0.06) 38%, rgba(0,0,0,0.2)),
+        var(--rarity-color, #ffffff);
+      box-shadow:
+        0 0 36px var(--rarity-glow, rgba(255,255,255,0.3)),
+        inset 0 0 35px rgba(255, 255, 255, 0.16),
+        inset -14px -18px 35px rgba(0, 0, 0, 0.28);
+      color: var(--rarity-text, #0f1117);
+      transform: rotateX(12deg) rotateY(-12deg);
+      transition: background 240ms ease, box-shadow 240ms ease, color 240ms ease;
+    }
+
+    .dice.rolling {
+      animation: tumble 760ms cubic-bezier(.2,.85,.26,1.18);
+    }
+
+    @keyframes tumble {
+      0% { transform: rotateX(12deg) rotateY(-12deg) scale(1); }
+      30% { transform: rotateX(210deg) rotateY(120deg) scale(1.08); }
+      62% { transform: rotateX(420deg) rotateY(310deg) scale(0.96); }
+      100% { transform: rotateX(732deg) rotateY(708deg) scale(1); }
+    }
+
+    .dice-number {
+      font-size: clamp(3.1rem, 10vw, 6.8rem);
+      line-height: 1;
+      font-weight: 900;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
+    }
+
+    .rarity-name {
+      margin: 0;
+      font-size: clamp(2rem, 6vw, 4.8rem);
+      line-height: 0.94;
+      letter-spacing: 0;
+      text-shadow: 0 0 28px var(--rarity-glow, rgba(255,255,255,0.24));
+    }
+
+    .rarity-name.rare-reveal {
+      animation: rareTitle 940ms cubic-bezier(.14,.95,.25,1.18);
+    }
+
+    .rarity-flavor {
+      min-height: 1.6em;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 2vw, 1.25rem);
+    }
+
+    .controls {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 0 20px 28px;
+    }
+
+    .roll-btn, .ghost-btn {
+      min-height: 48px;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 160ms ease, filter 160ms ease, border-color 160ms ease;
+    }
+
+    .roll-btn {
+      min-width: 172px;
+      padding: 0 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #3ce2b6, #ffd35a);
+      color: #101217;
+      font-weight: 850;
+      box-shadow: 0 12px 28px rgba(60, 226, 182, 0.2);
+    }
+
+    .roll-btn:hover, .ghost-btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+
+    .roll-btn:active, .ghost-btn:active {
+      transform: translateY(1px);
+    }
+
+    .roll-btn:disabled {
+      cursor: wait;
+      filter: grayscale(0.2) brightness(0.85);
+    }
+
+    .ghost-btn {
+      width: 48px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+    }
+
+    .ghost-btn svg, .roll-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke-width: 2.4;
+    }
+
+    .sidebar {
+      min-height: calc(100vh - 48px);
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(23, 28, 37, 0.9);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .side-head {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .side-head h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    .side-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .shop {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .shop h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    .shop-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .leaderboard {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.018);
+    }
+
+    .leaderboard h2 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    .leader-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .leader-item {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      min-height: 42px;
+      padding: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.16);
+    }
+
+    .leader-item.current-player {
+      border-color: rgba(60, 226, 182, 0.34);
+      background: rgba(60, 226, 182, 0.08);
+    }
+
+    .leader-place {
+      color: var(--muted);
+      text-align: center;
+      font-weight: 850;
+    }
+
+    .leader-name {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+      font-size: 0.9rem;
+    }
+
+    .leader-name strong, .leader-name span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .leader-name span {
+      color: var(--muted);
+      flex: 0 0 auto;
+    }
+
+    .leader-rarity {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .shop-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.045);
+    }
+
+    .shop-card.maxed {
+      background: rgba(60, 226, 182, 0.08);
+      border-color: rgba(60, 226, 182, 0.24);
+    }
+
+    .shop-card strong {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.98rem;
+    }
+
+    .shop-card span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .shop-level {
+      flex: 0 0 auto;
+      color: var(--accent);
+      font-size: 0.76rem;
+      font-weight: 850;
+    }
+
+    .buy-btn {
+      min-width: 86px;
+      min-height: 40px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #ffd35a, #3ce2b6);
+      color: #101217;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .buy-btn:disabled {
+      cursor: not-allowed;
+      background: rgba(255,255,255,0.1);
+      color: var(--muted);
+    }
+
+    .rarity-list {
+      margin: 0;
+      padding: 10px;
+      list-style: none;
+      overflow: auto;
+    }
+
+    .rarity-item {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) minmax(70px, auto);
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      margin-bottom: 6px;
+      padding: 8px 10px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.035);
+      transition: background 160ms ease, border-color 160ms ease;
+    }
+
+    .rarity-item.active {
+      border-color: var(--rarity-glow);
+      background: color-mix(in srgb, var(--rarity-glow) 17%, transparent);
+    }
+
+    .badge {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--rarity-color);
+      color: var(--rarity-text, #0f1117);
+      font-weight: 850;
+      box-shadow: 0 0 18px var(--rarity-glow);
+    }
+
+    .rarity-label {
+      min-width: 0;
+    }
+
+    .rarity-label strong {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rarity-label span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .count {
+      min-width: 70px;
+      text-align: right;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.82rem;
+    }
+
+    .history {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 58px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      overflow-x: auto;
+      background: rgba(0, 0, 0, 0.16);
+    }
+
+    .chip {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 34px;
+      padding: 0 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.055);
+      color: var(--text);
+      font-size: 0.88rem;
+    }
+
+    .chip i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--rarity-color);
+      box-shadow: 0 0 12px var(--rarity-glow);
+    }
+
+    .sparkle {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      pointer-events: none;
+      background: var(--rarity-color, #fff);
+      box-shadow: 0 0 16px var(--rarity-glow, #fff);
+      animation: burst 780ms ease-out forwards;
+    }
+
+    .sparkle.star {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      transform: rotate(45deg);
+      animation-duration: 1160ms;
+    }
+
+    .shockwave {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 120px;
+      aspect-ratio: 1;
+      border: 2px solid var(--rarity-glow, #fff);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(0.2);
+      box-shadow: 0 0 36px var(--rarity-glow, #fff), inset 0 0 28px var(--rarity-glow, #fff);
+      animation: shockwave 900ms ease-out forwards;
+    }
+
+    .screen-flash {
+      position: fixed;
+      inset: 0;
+      z-index: 15;
+      pointer-events: none;
+      background: radial-gradient(circle, color-mix(in srgb, var(--rarity-glow) 55%, transparent), transparent 62%);
+      animation: flash 820ms ease-out forwards;
+    }
+
+    .rare-banner {
+      position: fixed;
+      left: 50%;
+      top: 16%;
+      z-index: 16;
+      width: min(720px, calc(100vw - 32px));
+      pointer-events: none;
+      transform: translate(-50%, -20px) scale(0.9);
+      text-align: center;
+      color: var(--text);
+      text-shadow: 0 0 16px var(--rarity-glow), 0 0 36px var(--rarity-glow);
+      animation: bannerPop 1800ms cubic-bezier(.13,.94,.28,1) forwards;
+    }
+
+    .rare-banner strong {
+      display: block;
+      font-size: clamp(2rem, 8vw, 5.7rem);
+      line-height: 0.92;
+      letter-spacing: 0;
+    }
+
+    .rare-banner span {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 5px 10px;
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 999px;
+      background: rgba(0,0,0,0.26);
+      color: var(--rarity-glow);
+      font-size: 0.82rem;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .meteor {
+      position: fixed;
+      z-index: 14;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      pointer-events: none;
+      background: var(--rarity-glow);
+      box-shadow: 0 0 18px var(--rarity-glow), -42px 0 20px var(--rarity-glow);
+      animation: meteorFall 1000ms linear forwards;
+    }
+
+    .stage.screen-shake {
+      animation: screenShake 520ms ease-in-out;
+    }
+
+    .name-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(5, 7, 11, 0.82);
+      backdrop-filter: blur(12px);
+    }
+
+    .name-modal.hidden {
+      display: none;
+    }
+
+    .name-card {
+      width: min(420px, 100%);
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #171c25;
+      box-shadow: var(--shadow);
+    }
+
+    .name-card h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      letter-spacing: 0;
+    }
+
+    .name-card p {
+      margin: 8px 0 16px;
+      color: var(--muted);
+    }
+
+    .name-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .name-row input {
+      min-width: 0;
+      flex: 1;
+      height: 46px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      outline: none;
+    }
+
+    .name-row input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(60, 226, 182, 0.16);
+    }
+
+    @keyframes burst {
+      from { transform: translate(0, 0) scale(1); opacity: 1; }
+      to { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; }
+    }
+
+    @keyframes shockwave {
+      0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.2); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(5.8); }
+    }
+
+    @keyframes flash {
+      0% { opacity: 0; }
+      18% { opacity: 0.85; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes bannerPop {
+      0% { opacity: 0; transform: translate(-50%, -28px) scale(0.84); filter: blur(8px); }
+      18% { opacity: 1; transform: translate(-50%, 0) scale(1.04); filter: blur(0); }
+      72% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -10px) scale(0.96); }
+    }
+
+    @keyframes rareTitle {
+      0% { transform: scale(0.72); filter: blur(10px); opacity: 0.2; }
+      45% { transform: scale(1.12); filter: blur(0); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes meteorFall {
+      0% { opacity: 0; transform: translate(var(--start-x), -12vh) rotate(135deg) scale(0.7); }
+      12% { opacity: 1; }
+      100% { opacity: 0; transform: translate(var(--end-x), 112vh) rotate(135deg) scale(1.35); }
+    }
+
+    @keyframes screenShake {
+      0%, 100% { transform: translate(0, 0); }
+      18% { transform: translate(7px, -5px); }
+      36% { transform: translate(-6px, 5px); }
+      54% { transform: translate(5px, 4px); }
+      72% { transform: translate(-4px, -3px); }
+    }
+
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .stage, .sidebar {
+        min-height: auto;
+      }
+
+      .stage {
+        min-height: 680px;
+      }
+
+      .sidebar {
+        max-height: 620px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .app {
+        width: min(100vw - 20px, 1180px);
+        padding: 10px 0;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .stats {
+        width: 100%;
+        justify-content: stretch;
+      }
+
+      .stat {
+        flex: 1 1 90px;
+      }
+
+      .stage {
+        min-height: calc(100vh - 20px);
+      }
+
+      .roll-zone {
+        padding-inline: 14px;
+      }
+
+      .controls {
+        padding-inline: 14px;
+      }
+
+      .roll-btn {
+        flex: 1 1 190px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="stage" aria-label="Rarity dice game">
+      <header class="topbar">
+        <h1>Rarity Dice</h1>
+        <div class="stats" aria-label="Roll stats">
+          <div class="stat">
+            <span>Player</span>
+            <strong id="playerName">...</strong>
+          </div>
+          <div class="stat">
+            <span>Rolls</span>
+            <strong id="rollCount">0</strong>
+          </div>
+          <div class="stat">
+            <span>Money</span>
+            <strong id="money">$0</strong>
+          </div>
+          <div class="stat">
+            <span>Luck</span>
+            <strong id="luck">0%</strong>
+          </div>
+          <div class="stat">
+            <span>Best</span>
+            <strong id="bestRarity">None</strong>
+          </div>
+          <div class="stat">
+            <span>Streak</span>
+            <strong id="streak">0</strong>
+          </div>
+        </div>
+      </header>
+
+      <div class="roll-zone" id="rollZone">
+        <div class="result">
+          <div class="dice-wrap" aria-live="polite">
+            <div class="dice" id="dice">
+              <div class="dice-number" id="diceNumber">?</div>
+            </div>
+          </div>
+          <h2 class="rarity-name" id="rarityName">Ready?</h2>
+          <p class="rarity-flavor" id="rarityFlavor">Roll the dice and claim a rarity.</p>
+        </div>
+      </div>
+
+      <footer class="controls">
+        <button class="roll-btn" id="rollButton" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+            <path d="M21 3v6h-6"/>
+          </svg>
+          Roll Dice
+        </button>
+        <button class="ghost-btn" id="autoButton" type="button" title="Auto roll" aria-label="Auto roll">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path d="m5 3 14 9-14 9V3z"/>
+          </svg>
+        </button>
+        <button class="ghost-btn" id="resetButton" type="button" title="Reset" aria-label="Reset">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 3-6.7"/>
+            <path d="M3 4v6h6"/>
+          </svg>
+        </button>
+      </footer>
+
+      <div class="history" id="history" aria-label="Recent rolls"></div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="side-head">
+        <h2>Rarity Table</h2>
+        <p>Rarer rolls pay more money. Luck boosts higher tiers.</p>
+      </div>
+      <section class="shop" aria-label="Shop">
+        <h2>Shop</h2>
+        <div class="shop-list" id="shopList"></div>
+      </section>
+      <section class="leaderboard" aria-label="Leaderboard">
+        <h2>Leaderboard</h2>
+        <ol class="leader-list" id="leaderboardList"></ol>
+      </section>
+      <ol class="rarity-list" id="rarityList"></ol>
+    </aside>
+  </main>
+
+  <div class="name-modal" id="nameModal" role="dialog" aria-modal="true" aria-labelledby="nameTitle">
+    <form class="name-card" id="nameForm">
+      <h2 id="nameTitle">Choose a nickname</h2>
+      <p>Your rarest pull will be saved on this browser's leaderboard.</p>
+      <div class="name-row">
+        <input id="nameInput" maxlength="18" autocomplete="nickname" placeholder="Nickname" required>
+        <button class="buy-btn" type="submit">Start</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const rarityData = [
+      ["Common", "White", "50%", 2, "#f6f7fb", "#ffffff", "#12141a"],
+      ["Uncommon", "Green", "25%", 4, "#42e88d", "#42e88d", "#07140c"],
+      ["Rare", "Blue", "12%", 8, "#4aa8ff", "#4aa8ff", "#06111f"],
+      ["Epic", "Purple", "6%", 17, "#aa73ff", "#aa73ff", "#13081f"],
+      ["Legendary", "Gold", "3%", 33, "#ffd35a", "#ffd35a", "#1d1503"],
+      ["Mythic", "Crimson", "1.5%", 67, "#ff365f", "#ff365f", "#21040b"],
+      ["Divine", "Light Gold", "0.8%", 125, "#fff1a8", "#fff1a8", "#1c1600"],
+      ["Ancient", "Bronze", "0.4%", 250, "#9a6a3a", "#c99258", "#1d1005"],
+      ["Celestial", "Cyan", "0.2%", 500, "#52efff", "#52efff", "#02191b"],
+      ["Cosmic", "Indigo", "0.1%", 1000, "#4a4dff", "#7c83ff", "#060718"],
+      ["Eternal", "Silver", "0.05%", 2000, "#dce4ef", "#e9f0ff", "#11141a"],
+      ["Immortal", "Teal", "0.02%", 5000, "#30d8c8", "#30d8c8", "#031918"],
+      ["Transcendent", "Rainbow", "0.01%", 10000, "linear-gradient(135deg, #ff4d6d, #ffd35a, #42e88d, #52efff, #aa73ff)", "#52efff", "#080914"],
+      ["Omniversal", "Orange", "0.005%", 20000, "#ff9b35", "#ff9b35", "#1f0b00"],
+      ["Infinite", "Electric Blue", "0.002%", 50000, "#1f7fff", "#4fb2ff", "#031024"],
+      ["Ascended", "White & Gold", "0.001%", 100000, "linear-gradient(135deg, #ffffff, #ffd35a)", "#fff3a8", "#171100"],
+      ["Godly", "Bright Yellow", "0.0005%", 200000, "#ffef2e", "#ffef2e", "#1e1900"],
+      ["Void", "Black", "0.0002%", 500000, "linear-gradient(135deg, #020205, #16111f)", "#5c3d91", "#f3efff"],
+      ["Omega", "Red & Black", "0.0001%", 1000000, "linear-gradient(135deg, #111111, #ff2e2e)", "#ff3e32", "#fff3f3"],
+      ["Impossible", "Rainbow Glow", "0.00005%", 2000000, "conic-gradient(#ff4d6d, #ffd35a, #42e88d, #52efff, #aa73ff, #ff4d6d)", "#ffffff", "#090914"],
+      ["Supreme", "Orange-Red", "0.00002%", 5000000, "linear-gradient(135deg, #ff4b1f, #ff9b35)", "#ff6840", "#200704"],
+      ["Ultimate", "Amber", "0.00001%", 10000000, "#ffbf2f", "#ffd36b", "#1c1000"],
+      ["Primordial", "Dark Red", "1 in 200,000", 200000, "#6f1111", "#bb2a2a", "#fff2f2"],
+      ["Universal", "Emerald", "1 in 500,000", 500000, "#18b66a", "#31e28d", "#02140c"],
+      ["Multiversal", "Violet", "1 in 1 Million", 1000000, "#8d56ff", "#b68cff", "#0d061d"],
+      ["Hyperversal", "Sky Blue", "1 in 2 Million", 2000000, "#7fdcff", "#a7ecff", "#02131b"],
+      ["Outerversal", "Obsidian", "1 in 5 Million", 5000000, "linear-gradient(135deg, #030304, #23232a)", "#7f8698", "#f4f6ff"],
+      ["Boundless", "Neon Purple", "1 in 10 Million", 10000000, "#c934ff", "#e16bff", "#15011d"],
+      ["Infinity", "Sapphire", "1 in 20 Million", 20000000, "#185cff", "#5a90ff", "#03102d"],
+      ["Zenith", "Platinum", "1 in 50 Million", 50000000, "#e6e7ef", "#ffffff", "#101116"],
+      ["Apex", "Ruby", "1 in 100 Million", 100000000, "#d7194a", "#ff4d78", "#26020a"],
+      ["Paragon", "Diamond", "1 in 250 Million", 250000000, "linear-gradient(135deg, #eaffff, #8eefff)", "#dffcff", "#071517"],
+      ["Exalted", "Sun Gold", "1 in 500 Million", 500000000, "#ffd000", "#fff06b", "#1d1600"],
+      ["Empyrean", "Pearl White", "1 in 1 Billion", 1000000000, "#fff9ec", "#ffffff", "#16120c"],
+      ["Arcane", "Magenta", "1 in 2 Billion", 2000000000, "#e43dff", "#fa80ff", "#1d0222"],
+      ["Ethereal", "Mist Gray", "1 in 5 Billion", 5000000000, "#aeb7c4", "#dce7f5", "#11151b"],
+      ["Astral", "Deep Space Blue", "1 in 10 Billion", 10000000000, "linear-gradient(135deg, #07164f, #102fa3)", "#4a68ff", "#eef2ff"],
+      ["Dimensional", "Neon Cyan", "1 in 20 Billion", 20000000000, "#00fff0", "#7ffff8", "#001615"],
+      ["Reality", "Green-Blue", "1 in 50 Billion", 50000000000, "linear-gradient(135deg, #14c96b, #239bff)", "#4fe8c8", "#031414"],
+      ["Origin", "Ancient Gold", "1 in 100 Billion", 100000000000, "#b78a31", "#f0c05a", "#1b1000"],
+      ["Creator", "Brilliant White", "1 in 250 Billion", 250000000000, "#ffffff", "#ffffff", "#101217"],
+      ["Genesis", "Rose Gold", "1 in 500 Billion", 500000000000, "linear-gradient(135deg, #ff9aa8, #ffd07f)", "#ffc0a8", "#241006"],
+      ["Alpha", "Royal Gold", "1 in 1 Trillion", 1000000000000, "#e5b02e", "#ffd65f", "#191000"],
+      ["Omega Prime", "Black & Scarlet", "1 in 5 Trillion", 5000000000000, "linear-gradient(135deg, #050505, #b30021)", "#ff234c", "#fff2f5"],
+      ["Absolute", "Animated Rainbow", "1 in 10 Trillion", 10000000000000, "conic-gradient(#ff4d6d, #ffd35a, #42e88d, #52efff, #aa73ff, #ff4d6d)", "#ffffff", "#080914"],
+      ["Limitless", "Galaxy Blue", "1 in 50 Trillion", 50000000000000, "linear-gradient(135deg, #18208f, #35b6ff, #9a6bff)", "#76ceff", "#eef8ff"],
+      ["Transfinite", "Aurora", "1 in 100 Trillion", 100000000000000, "linear-gradient(135deg, #00ffc6, #8f6bff, #ff77ce)", "#b68cff", "#060916"],
+      ["Omnipotent", "Glowing Gold", "1 in 500 Trillion", 500000000000000, "#ffe55c", "#fff4a8", "#191300"],
+      ["Unobtainium", "Prismatic", "1 in 1 Quadrillion", 1000000000000000, "conic-gradient(#ff82c8, #ffe36b, #81ffdc, #7aa7ff, #ff82c8)", "#ffccf0", "#0d0712"],
+      ["The One", "Shifting Rainbow + Glow", "1 in 1 Quintillion", 1000000000000000000, "conic-gradient(#ffffff, #ff4d6d, #ffd35a, #42e88d, #52efff, #aa73ff, #ffffff)", "#ffffff", "#080914"]
+    ];
+
+    const rarities = rarityData.map((item, index) => ({
+      rank: index + 1,
+      name: item[0],
+      colorName: item[1],
+      chanceLabel: item[2],
+      oneIn: item[3],
+      baseWeight: 1 / item[3],
+      reward: Math.max(1, Math.round(item[3] / 2)),
+      color: item[4],
+      glow: item[5],
+      text: item[6],
+      count: 0
+    }));
+
+    const dice = document.querySelector("#dice");
+    const diceNumber = document.querySelector("#diceNumber");
+    const rarityName = document.querySelector("#rarityName");
+    const rarityFlavor = document.querySelector("#rarityFlavor");
+    const rollButton = document.querySelector("#rollButton");
+    const autoButton = document.querySelector("#autoButton");
+    const resetButton = document.querySelector("#resetButton");
+    const playerNameDisplay = document.querySelector("#playerName");
+    const rollCount = document.querySelector("#rollCount");
+    const moneyDisplay = document.querySelector("#money");
+    const luckDisplay = document.querySelector("#luck");
+    const bestRarity = document.querySelector("#bestRarity");
+    const streak = document.querySelector("#streak");
+    const shopList = document.querySelector("#shopList");
+    const rarityList = document.querySelector("#rarityList");
+    const leaderboardList = document.querySelector("#leaderboardList");
+    const history = document.querySelector("#history");
+    const rollZone = document.querySelector("#rollZone");
+    const stage = document.querySelector(".stage");
+    const nameModal = document.querySelector("#nameModal");
+    const nameForm = document.querySelector("#nameForm");
+    const nameInput = document.querySelector("#nameInput");
+
+    let totalRolls = 0;
+    let money = 0;
+    let upgrades = {};
+    let playerName = "";
+    let bestRarityPulled = null;
+    let currentStreak = 0;
+    let lastRank = 0;
+    let rolling = false;
+    let autoTimer = null;
+    const playerKey = "rarityDicePlayerName";
+    const leaderboardKey = "rarityDiceLeaderboard";
+    const memoryStore = {};
+    const upgradeDefs = [
+      {
+        id: "luck",
+        name: "Luck Upgrade",
+        desc: (level) => `Boosts higher rarity weights. Next: ${(level + 1) * 10}% luck.`,
+        max: 30,
+        baseCost: 25,
+        growth: 1.42
+      },
+      {
+        id: "coins",
+        name: "Coin Boost",
+        desc: (level) => `Earn more money from every roll. Next: x${(1 + ((level + 1) * 0.25)).toFixed(2)} payout.`,
+        max: 20,
+        baseCost: 60,
+        growth: 1.55
+      },
+      {
+        id: "rareDice",
+        name: "Lucky Dice",
+        desc: (level) => `Extra push toward rare tiers. Next: +${(level + 1) * 4}% rare pressure.`,
+        max: 25,
+        baseCost: 140,
+        growth: 1.62
+      },
+      {
+        id: "speed",
+        name: "Quick Roll",
+        desc: (level) => `Shortens the roll animation. Next: ${Math.max(320, 780 - ((level + 1) * 45))}ms rolls.`,
+        max: 10,
+        baseCost: 90,
+        growth: 1.5
+      },
+      {
+        id: "auto",
+        name: "Auto Engine",
+        desc: (level) => `Speeds up auto-roll. Next: ${Math.max(420, 1200 - ((level + 1) * 70))}ms auto rolls.`,
+        max: 10,
+        baseCost: 180,
+        growth: 1.58
+      },
+      {
+        id: "jackpot",
+        name: "Jackpot Charm",
+        desc: (level) => `Small bonus on very rare pulls. Next: +${(level + 1) * 5}% bonus money for tier 10+.`,
+        max: 15,
+        baseCost: 300,
+        growth: 1.7
+      }
+    ];
+
+    function setRarityVars(rarity) {
+      document.documentElement.style.setProperty("--rarity-color", rarity.color);
+      document.documentElement.style.setProperty("--rarity-glow", rarity.glow);
+      document.documentElement.style.setProperty("--rarity-text", rarity.text);
+    }
+
+    function formatMoney(value) {
+      return `$${Math.floor(value).toLocaleString()}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
+    function formatOdds(rarity) {
+      if (rarity.chanceLabel.includes(" in ")) return rarity.chanceLabel;
+      return `${rarity.chanceLabel} - 1 in ${rarity.oneIn.toLocaleString()}`;
+    }
+
+    function getStored(key, fallback = null) {
+      try {
+        const value = localStorage.getItem(key);
+        if (value !== null) return value;
+        return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : fallback;
+      } catch {
+        return Object.prototype.hasOwnProperty.call(memoryStore, key) ? memoryStore[key] : fallback;
+      }
+    }
+
+    function setStored(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch {
+        memoryStore[key] = value;
+      }
+    }
+
+    function levelOf(id) {
+      return upgrades[id] || 0;
+    }
+
+    function upgradeCost(upgrade) {
+      return Math.floor(upgrade.baseCost * Math.pow(upgrade.growth, levelOf(upgrade.id)));
+    }
+
+    function luckPercent() {
+      return levelOf("luck") * 10;
+    }
+
+    function payoutMultiplier() {
+      return 1 + (levelOf("coins") * 0.25);
+    }
+
+    function rollDuration() {
+      return Math.max(320, 780 - (levelOf("speed") * 45));
+    }
+
+    function autoDelay() {
+      return Math.max(420, 1200 - (levelOf("auto") * 70));
+    }
+
+    function rewardFor(rarity) {
+      const jackpotBonus = rarity.rank >= 10 ? 1 + (levelOf("jackpot") * 0.05) : 1;
+      return Math.max(1, Math.round(rarity.reward * payoutMultiplier() * jackpotBonus));
+    }
+
+    function hypeLevel(rarity) {
+      if (rarity.rank >= 45) return 5;
+      if (rarity.rank >= 35) return 4;
+      if (rarity.rank >= 25) return 3;
+      if (rarity.rank >= 15) return 2;
+      if (rarity.rank >= 8) return 1;
+      return 0;
+    }
+
+    function weightedRarity() {
+      const weights = rarities.map((rarity) => {
+        const luckBonus = 1 + ((rarity.rank - 1) * levelOf("luck") * 0.1);
+        const rareDiceBonus = 1 + (Math.max(0, rarity.rank - 5) * levelOf("rareDice") * 0.04);
+        return rarity.baseWeight * luckBonus * rareDiceBonus;
+      });
+      const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+      let target = Math.random() * totalWeight;
+      for (let i = 0; i < rarities.length; i += 1) {
+        target -= weights[i];
+        if (target <= 0) return rarities[i];
+      }
+      return rarities[rarities.length - 1];
+    }
+
+    function updateEconomy() {
+      moneyDisplay.textContent = formatMoney(money);
+      luckDisplay.textContent = `${luckPercent()}%`;
+      renderShop();
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = setInterval(roll, autoDelay());
+      }
+    }
+
+    function renderShop() {
+      shopList.innerHTML = "";
+      upgradeDefs.forEach((upgrade) => {
+        const level = levelOf(upgrade.id);
+        const maxed = level >= upgrade.max;
+        const cost = upgradeCost(upgrade);
+        const card = document.createElement("div");
+        card.className = `shop-card${maxed ? " maxed" : ""}`;
+        card.innerHTML = `
+          <div>
+            <strong>${upgrade.name}<span class="shop-level">Lv. ${level}/${upgrade.max}</span></strong>
+            <span>${maxed ? "Fully upgraded." : upgrade.desc(level)}</span>
+          </div>
+          <button class="buy-btn" type="button" data-upgrade="${upgrade.id}" ${maxed || money < cost ? "disabled" : ""}>${maxed ? "Maxed" : `Buy ${formatMoney(cost)}`}</button>
+        `;
+        shopList.appendChild(card);
+      });
+    }
+
+    function loadLeaderboard() {
+      try {
+        const parsed = JSON.parse(getStored(leaderboardKey, "[]")) || [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveLeaderboard(entries) {
+      setStored(leaderboardKey, JSON.stringify(entries.slice(0, 10)));
+    }
+
+    function renderLeaderboard() {
+      const entries = loadLeaderboard()
+        .sort((a, b) => b.oneIn - a.oneIn || b.rank - a.rank || b.rolls - a.rolls)
+        .slice(0, 5);
+      leaderboardList.innerHTML = "";
+      if (!entries.length) {
+        const empty = document.createElement("li");
+        empty.className = "leader-item";
+        empty.innerHTML = `<span class="leader-place">-</span><div><div class="leader-name"><strong>No pulls yet</strong><span></span></div><div class="leader-rarity">Roll to enter the board.</div></div>`;
+        leaderboardList.appendChild(empty);
+        return;
+      }
+      entries.forEach((entry, index) => {
+        const li = document.createElement("li");
+        const isCurrent = playerName && entry.name.toLowerCase() === playerName.toLowerCase();
+        li.className = `leader-item${isCurrent ? " current-player" : ""}`;
+        li.innerHTML = `
+          <span class="leader-place">${index + 1}</span>
+          <div>
+            <div class="leader-name"><strong>${escapeHtml(entry.name)}</strong><span>#${entry.rank}</span></div>
+            <div class="leader-rarity">${escapeHtml(entry.rarity)} - ${escapeHtml(entry.odds)}</div>
+          </div>
+        `;
+        leaderboardList.appendChild(li);
+      });
+    }
+
+    function updateLeaderboard(rarity) {
+      if (!playerName) return;
+      const entries = loadLeaderboard();
+      const existing = entries.find((entry) => entry.name.toLowerCase() === playerName.toLowerCase());
+      const nextEntry = {
+        name: playerName,
+        rarity: rarity.name,
+        rank: rarity.rank,
+        oneIn: rarity.oneIn,
+        odds: formatOdds(rarity),
+        rolls: totalRolls
+      };
+      if (!existing) {
+        entries.push(nextEntry);
+      } else if (rarity.oneIn > existing.oneIn || (rarity.oneIn === existing.oneIn && rarity.rank > existing.rank)) {
+        Object.assign(existing, nextEntry);
+      } else {
+        existing.rolls = totalRolls;
+      }
+      saveLeaderboard(entries.sort((a, b) => b.oneIn - a.oneIn || b.rank - a.rank || b.rolls - a.rolls));
+      renderLeaderboard();
+    }
+
+    function renderList(activeRank = 0) {
+      rarityList.innerHTML = "";
+      rarities.forEach((rarity) => {
+        const li = document.createElement("li");
+        li.className = `rarity-item${rarity.rank === activeRank ? " active" : ""}`;
+        li.style.setProperty("--rarity-color", rarity.color);
+        li.style.setProperty("--rarity-glow", rarity.glow);
+        li.style.setProperty("--rarity-text", rarity.text);
+        li.innerHTML = `
+          <span class="badge">${rarity.rank}</span>
+          <span class="rarity-label">
+            <strong>${rarity.name}</strong>
+            <span>${formatOdds(rarity)}</span>
+          </span>
+          <span class="count">${rarity.count} | +${formatMoney(rewardFor(rarity))}</span>
+        `;
+        rarityList.appendChild(li);
+      });
+    }
+
+    function addHistory(rarity) {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.style.setProperty("--rarity-color", rarity.color);
+      chip.style.setProperty("--rarity-glow", rarity.glow);
+      chip.innerHTML = `<i></i>${rarity.rank}. ${rarity.name}`;
+      history.prepend(chip);
+      while (history.children.length > 18) {
+        history.lastElementChild.remove();
+      }
+    }
+
+    function burst(rarity, hype = 0) {
+      const rect = rollZone.getBoundingClientRect();
+      const amount = 34 + (hype * 18);
+      for (let i = 0; i < amount; i += 1) {
+        const spark = document.createElement("span");
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 70 + Math.random() * (190 + (hype * 40));
+        spark.className = `sparkle${hype >= 2 && i % 4 === 0 ? " star" : ""}`;
+        spark.style.left = `${rect.width / 2}px`;
+        spark.style.top = `${rect.height / 2}px`;
+        spark.style.setProperty("--rarity-color", rarity.color);
+        spark.style.setProperty("--rarity-glow", rarity.glow);
+        spark.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
+        spark.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
+        rollZone.appendChild(spark);
+        spark.addEventListener("animationend", () => spark.remove(), { once: true });
+      }
+    }
+
+    function shockwave(rarity, hype) {
+      const waves = Math.max(1, hype);
+      for (let i = 0; i < waves; i += 1) {
+        const wave = document.createElement("span");
+        wave.className = "shockwave";
+        wave.style.setProperty("--rarity-glow", rarity.glow);
+        wave.style.animationDelay = `${i * 120}ms`;
+        rollZone.appendChild(wave);
+        wave.addEventListener("animationend", () => wave.remove(), { once: true });
+      }
+    }
+
+    function rareBanner(rarity, hype) {
+      if (hype < 2) return;
+      const banner = document.createElement("div");
+      banner.className = "rare-banner";
+      banner.style.setProperty("--rarity-glow", rarity.glow);
+      const label = hype >= 5 ? "Reality Shattering Pull" : hype >= 4 ? "Impossible Pull" : hype >= 3 ? "Mythic Event" : "Rare Pull";
+      banner.innerHTML = `<span>${label}</span><strong>${rarity.name}</strong>`;
+      document.body.appendChild(banner);
+      banner.addEventListener("animationend", () => banner.remove(), { once: true });
+    }
+
+    function flashScreen(rarity, hype) {
+      if (hype < 2) return;
+      const flash = document.createElement("span");
+      flash.className = "screen-flash";
+      flash.style.setProperty("--rarity-glow", rarity.glow);
+      document.body.appendChild(flash);
+      flash.addEventListener("animationend", () => flash.remove(), { once: true });
+    }
+
+    function meteors(rarity, hype) {
+      if (hype < 3) return;
+      for (let i = 0; i < hype * 5; i += 1) {
+        const meteor = document.createElement("span");
+        meteor.className = "meteor";
+        meteor.style.left = `${Math.random() * 100}vw`;
+        meteor.style.top = `${-10 - (Math.random() * 20)}vh`;
+        meteor.style.setProperty("--rarity-glow", rarity.glow);
+        meteor.style.setProperty("--start-x", `${Math.random() * 30 - 15}vw`);
+        meteor.style.setProperty("--end-x", `${Math.random() * 80 - 40}vw`);
+        meteor.style.animationDelay = `${Math.random() * 450}ms`;
+        document.body.appendChild(meteor);
+        meteor.addEventListener("animationend", () => meteor.remove(), { once: true });
+      }
+    }
+
+    function epicReveal(rarity) {
+      const hype = hypeLevel(rarity);
+      rarityName.classList.remove("rare-reveal");
+      void rarityName.offsetWidth;
+      if (hype > 0) rarityName.classList.add("rare-reveal");
+      burst(rarity, hype);
+      if (hype === 0) return;
+      shockwave(rarity, hype);
+      flashScreen(rarity, hype);
+      rareBanner(rarity, hype);
+      meteors(rarity, hype);
+      if (hype >= 3) {
+        stage.classList.remove("screen-shake");
+        void stage.offsetWidth;
+        stage.classList.add("screen-shake");
+      }
+    }
+
+    function roll() {
+      if (rolling) return;
+      rolling = true;
+      rollButton.disabled = true;
+      dice.classList.remove("rolling");
+      void dice.offsetWidth;
+      dice.style.animationDuration = `${rollDuration()}ms`;
+      dice.classList.add("rolling");
+
+      let flickers = 0;
+      const flickerDelay = Math.max(28, Math.floor(rollDuration() / 14));
+      const flicker = setInterval(() => {
+        const temporary = Math.floor(Math.random() * rarities.length) + 1;
+        diceNumber.textContent = temporary;
+        flickers += 1;
+        if (flickers > 10) clearInterval(flicker);
+      }, flickerDelay);
+
+      setTimeout(() => {
+        const rarity = weightedRarity();
+        const rank = rarity.rank;
+        totalRolls += 1;
+        const earned = rewardFor(rarity);
+        rarity.count += 1;
+        money += earned;
+        currentStreak = rank === lastRank ? currentStreak + 1 : 1;
+        lastRank = rank;
+        if (!bestRarityPulled || rarity.oneIn > bestRarityPulled.oneIn || (rarity.oneIn === bestRarityPulled.oneIn && rank > bestRarityPulled.rank)) {
+          bestRarityPulled = rarity;
+        }
+
+        setRarityVars(rarity);
+        diceNumber.textContent = rank;
+        rarityName.textContent = rarity.name;
+        rarityFlavor.textContent = `${rarity.colorName} rarity paid ${formatMoney(earned)} on roll ${totalRolls}.`;
+        rollCount.textContent = totalRolls;
+        bestRarity.textContent = bestRarityPulled.name;
+        streak.textContent = currentStreak;
+        renderList(rank);
+        addHistory(rarity);
+        epicReveal(rarity);
+        updateLeaderboard(bestRarityPulled);
+        updateEconomy();
+
+        rolling = false;
+        rollButton.disabled = false;
+      }, rollDuration());
+    }
+
+    function reset() {
+      totalRolls = 0;
+      money = 0;
+      upgrades = {};
+      bestRarityPulled = null;
+      currentStreak = 0;
+      lastRank = 0;
+      rarities.forEach((rarity) => rarity.count = 0);
+      history.innerHTML = "";
+      rollCount.textContent = "0";
+      bestRarity.textContent = "None";
+      streak.textContent = "0";
+      diceNumber.textContent = "?";
+      rarityName.textContent = "Ready?";
+      rarityFlavor.textContent = "Roll the dice and claim a rarity.";
+      setRarityVars(rarities[0]);
+      renderList();
+      renderLeaderboard();
+      updateEconomy();
+    }
+
+    function startPlayer(name) {
+      playerName = name.trim().slice(0, 18) || "Player";
+      setStored(playerKey, playerName);
+      playerNameDisplay.textContent = playerName;
+      nameModal.classList.add("hidden");
+      renderLeaderboard();
+      rollButton.focus();
+    }
+
+    function buyUpgrade(id) {
+      const upgrade = upgradeDefs.find((item) => item.id === id);
+      if (!upgrade || levelOf(id) >= upgrade.max) return;
+      const cost = upgradeCost(upgrade);
+      if (money < cost) return;
+      money -= cost;
+      upgrades[id] = levelOf(id) + 1;
+      renderList(lastRank);
+      updateEconomy();
+    }
+
+    function toggleAuto() {
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+        autoButton.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m5 3 14 9-14 9V3z"/></svg>`;
+        autoButton.title = "Auto roll";
+        autoButton.setAttribute("aria-label", "Auto roll");
+        return;
+      }
+
+      roll();
+      autoTimer = setInterval(roll, autoDelay());
+      autoButton.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>`;
+      autoButton.title = "Pause auto roll";
+      autoButton.setAttribute("aria-label", "Pause auto roll");
+    }
+
+    rollButton.addEventListener("click", roll);
+    autoButton.addEventListener("click", toggleAuto);
+    resetButton.addEventListener("click", reset);
+    shopList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-upgrade]");
+      if (!button) return;
+      buyUpgrade(button.dataset.upgrade);
+    });
+    nameForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      startPlayer(nameInput.value);
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.code === "Space" && !event.repeat) {
+        event.preventDefault();
+        roll();
+      }
+    });
+
+    reset();
+    const savedPlayer = getStored(playerKey, "");
+    if (savedPlayer) {
+      startPlayer(savedPlayer);
+    } else {
+      playerNameDisplay.textContent = "...";
+      nameInput.focus();
+    }
+  </script>
+</body>
+</html>
